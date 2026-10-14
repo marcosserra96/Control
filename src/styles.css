@@ -1,0 +1,151 @@
+@import '@fontsource-variable/manrope';
+@import '@fontsource-variable/bricolage-grotesque/standard.css';
+@import 'tailwindcss';
+
+/*
+ * Identidade "Control": grafite noturno, acento latão.
+ * Verde e coral são reservados para receita e despesa — nunca decorativos.
+ */
+@theme {
+  --font-sans: 'Manrope Variable', ui-sans-serif, system-ui, sans-serif;
+  --font-display: 'Bricolage Grotesque Variable', 'Manrope Variable', ui-sans-serif, sans-serif;
+
+  --color-bg: var(--c-bg);
+  --color-surface: var(--c-surface);
+  --color-raised: var(--c-raised);
+  --color-line: var(--c-line);
+  --color-line-strong: var(--c-line-strong);
+  --color-ink: var(--c-ink);
+  --color-muted: var(--c-muted);
+  --color-faint: var(--c-faint);
+  --color-brass: var(--c-brass);
+  --color-brass-ink: var(--c-brass-ink);
+  --color-brass-soft: var(--c-brass-soft);
+  --color-gain: var(--c-gain);
+  --color-gain-soft: var(--c-gain-soft);
+  --color-loss: var(--c-loss);
+  --color-loss-soft: var(--c-loss-soft);
+  --color-warn: var(--c-warn);
+
+  --radius-card: 1.25rem;
+  --radius-control: 0.875rem;
+
+  --animate-sheet-up: sheet-up 260ms cubic-bezier(0.2, 0.9, 0.3, 1);
+  --animate-fade-in: fade-in 180ms ease-out;
+  --animate-pop-in: pop-in 200ms cubic-bezier(0.2, 0.9, 0.3, 1);
+}
+
+@keyframes sheet-up {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes pop-in {
+  from { opacity: 0; transform: translateY(8px) scale(0.98); }
+  to { opacity: 1; transform: none; }
+}
+
+:root {
+  --c-bg: #0f1218;
+  --c-surface: #161a22;
+  --c-raised: #1e232d;
+  --c-line: #252b36;
+  --c-line-strong: #343b48;
+  --c-ink: #eceef3;
+  --c-muted: #8b93a5;
+  --c-faint: #5c6476;
+  --c-brass: #e3ae4a;
+  --c-brass-ink: #1a1408;
+  --c-brass-soft: rgb(227 174 74 / 0.14);
+  --c-gain: #5ccf9b;
+  --c-gain-soft: rgb(92 207 155 / 0.14);
+  --c-loss: #ff7b6b;
+  --c-loss-soft: rgb(255 123 107 / 0.14);
+  --c-warn: #f2c45c;
+  color-scheme: dark;
+}
+
+:root[data-theme='light'] {
+  --c-bg: #f3f4f7;
+  --c-surface: #ffffff;
+  --c-raised: #eef0f4;
+  --c-line: #e3e6ec;
+  --c-line-strong: #cfd4dd;
+  --c-ink: #141821;
+  --c-muted: #5d6578;
+  --c-faint: #8e96a8;
+  --c-brass: #a86f00;
+  --c-brass-ink: #ffffff;
+  --c-brass-soft: rgb(168 111 0 / 0.1);
+  --c-gain: #11875a;
+  --c-gain-soft: rgb(17 135 90 / 0.1);
+  --c-loss: #cf3a2a;
+  --c-loss-soft: rgb(207 58 42 / 0.09);
+  --c-warn: #a87300;
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: light) {
+  :root[data-theme='system'] {
+    --c-bg: #f3f4f7;
+    --c-surface: #ffffff;
+    --c-raised: #eef0f4;
+    --c-line: #e3e6ec;
+    --c-line-strong: #cfd4dd;
+    --c-ink: #141821;
+    --c-muted: #5d6578;
+    --c-faint: #8e96a8;
+    --c-brass: #a86f00;
+    --c-brass-ink: #ffffff;
+    --c-brass-soft: rgb(168 111 0 / 0.1);
+    --c-gain: #11875a;
+    --c-gain-soft: rgb(17 135 90 / 0.1);
+    --c-loss: #cf3a2a;
+    --c-loss-soft: rgb(207 58 42 / 0.09);
+    --c-warn: #a87300;
+    color-scheme: light;
+  }
+}
+
+@layer base {
+  html {
+    -webkit-tap-highlight-color: transparent;
+    text-size-adjust: 100%;
+  }
+  body {
+    background: var(--c-bg);
+    color: var(--c-ink);
+    font-family: var(--font-sans);
+    font-feature-settings: 'cv11';
+    -webkit-font-smoothing: antialiased;
+    min-height: 100dvh;
+    overscroll-behavior-y: none;
+  }
+  :focus-visible {
+    outline: 2px solid var(--c-brass);
+    outline-offset: 2px;
+  }
+  input, select, textarea, button { font: inherit; color: inherit; }
+  input[type='date']::-webkit-calendar-picker-indicator { filter: invert(0.6); cursor: pointer; }
+  :root[data-theme='light'] input[type='date']::-webkit-calendar-picker-indicator { filter: none; }
+  ::selection { background: var(--c-brass-soft); }
+}
+
+@layer utilities {
+  .num { font-variant-numeric: tabular-nums; letter-spacing: -0.01em; }
+  .display { font-family: var(--font-display); font-stretch: 88%; letter-spacing: -0.025em; }
+  .scrollbar-none { scrollbar-width: none; }
+  .scrollbar-none::-webkit-scrollbar { display: none; }
+  .pb-safe { padding-bottom: env(safe-area-inset-bottom); }
+  .pt-safe { padding-top: env(safe-area-inset-top); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
