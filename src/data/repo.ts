@@ -1,3 +1,4 @@
+import type { DescriptionRule } from '@/domain/import/rules'
 import type {
   Account, Budget, Category, Cents, Goal, GoalContribution, ISODate, NewTransaction, Recurrence, Transaction,
 } from '@/domain/types'
@@ -44,6 +45,12 @@ export interface Repo {
   listBudgets(): Promise<Budget[]>
   saveBudget(b: Upsert<Budget>): Promise<void>
   deleteBudget(id: string): Promise<void>
+
+  listRules(): Promise<DescriptionRule[]>
+  saveRule(r: Upsert<DescriptionRule>): Promise<DescriptionRule>
+  deleteRule(id: string): Promise<void>
+  /** Renomeia (e categoriza) os lançamentos importados que batem com a regra; devolve quantos */
+  applyRule(rule: DescriptionRule): Promise<number>
 
   listGoals(): Promise<Goal[]>
   saveGoal(g: Upsert<Goal>): Promise<Goal>

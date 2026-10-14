@@ -7,7 +7,7 @@ const page = await browser.newPage({ viewport: { width: 390, height: 844 } })
 await page.goto(base + '/', { waitUntil: 'networkidle' })
 // Coleta as rotas, inclusive o detalhe de cada conta, navegando por dentro do app
 const ids = await page.locator('a[href^="/contas/"]').evaluateAll((as) => [...new Set(as.map((a) => a.getAttribute('href')))])
-const routes = ['/', '/extrato', '/contas', ...ids, '/planejar', '/planejar/recorrentes', '/planejar/metas', '/relatorios', '/categorias', '/ajustes', '/mais']
+const routes = ['/', '/extrato', '/contas', ...ids, '/planejar', '/planejar/recorrentes', '/planejar/metas', '/relatorios', '/categorias', '/nomes', '/importar', '/ajustes', '/mais']
 let failed = 0
 for (const r of routes) {
   await page.evaluate((to) => { history.pushState({}, '', to); dispatchEvent(new PopStateEvent('popstate')) }, r)

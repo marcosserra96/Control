@@ -23,6 +23,7 @@ export const keys = {
   budgets: ['budgets'] as const,
   goals: ['goals'] as const,
   contributions: ['contributions'] as const,
+  rules: ['rules'] as const,
 }
 
 export function useAccounts() {
@@ -83,6 +84,11 @@ export function useGoals() {
   return useQuery({ queryKey: keys.goals, queryFn: () => repo.listGoals() })
 }
 
+export function useRules() {
+  const repo = useRepo()
+  return useQuery({ queryKey: keys.rules, queryFn: () => repo.listRules() })
+}
+
 export function useContributions() {
   const repo = useRepo()
   return useQuery({ queryKey: keys.contributions, queryFn: () => repo.listContributions() })
@@ -92,7 +98,7 @@ export function useContributions() {
  * Mutação que recebe o repositório e invalida as consultas afetadas.
  * `touches` lista o que muda; lançamentos sempre mexem em saldos.
  */
-type Area = 'accounts' | 'categories' | 'transactions' | 'recurrences' | 'budgets' | 'goals'
+type Area = 'accounts' | 'categories' | 'transactions' | 'recurrences' | 'budgets' | 'goals' | 'rules'
 
 export function useRepoMutation<TArgs, TResult = unknown>(
   fn: (repo: Repo, args: TArgs) => Promise<TResult>,
@@ -109,6 +115,8 @@ export function useRepoMutation<TArgs, TResult = unknown>(
         else if (t === 'accounts') ['accounts', 'balances', 'transactions'].forEach((p) => prefixes.add(p))
         else if (t === 'recurrences') ['recurrences', 'transactions', 'balances'].forEach((p) => prefixes.add(p))
         else if (t === 'goals') ['goals', 'contributions'].forEach((p) => prefixes.add(p))
+        // Regras renomeiam lançamentos já importados
+        else if (t === 'rules') ['rules', 'transactions', 'descriptions'].forEach((p) => prefixes.add(p))
         else prefixes.add(t)
       }
       await Promise.all([...prefixes].map((p) => qc.invalidateQueries({ queryKey: [p] })))

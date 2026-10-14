@@ -8,6 +8,7 @@ import { useToast } from '@/components/ui/Toast'
 import { composeTransactions } from '@/domain/compose'
 import { addDays, endOfMonth, monthLabel, shortDate, today } from '@/domain/dates'
 import { invoiceDueDate, invoiceMonthFor } from '@/domain/invoice'
+import { defaultPattern, MIN_PATTERN } from '@/domain/import/rules'
 import { formatBRL, splitInstallments } from '@/domain/money'
 import type { Account, Category, Frequency, ISODate, Transaction, TxType } from '@/domain/types'
 import { FREQUENCY_LABEL } from '@/domain/types'
@@ -90,8 +91,13 @@ function TransactionForm({
   const [moreOpen, setMoreOpen] = useState(Boolean(editing?.notes))
   const [submitted, setSubmitted] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
+  const [rememberName, setRememberName] = useState(true)
 
   const account = accounts.find((a) => a.id === accountId)
+  const offerRemember = Boolean(
+    editing?.bankText && type !== 'transfer' && description.trim() && description.trim() !== editing.description &&
+    defaultPattern(editing.bankText).length >= MIN_PATTERN,
+  )
   const isCard = account?.type === 'credit_card'
   const kindCategories = categories.filter((c) => !c.archived && c.kind === (type === 'income' ? 'income' : 'expense'))
 
@@ -123,6 +129,11 @@ function TransactionForm({
       // Parcelas mantêm a fatura original, para não desalinhar a sequência
       if (editing.installmentGroup && editing.accountId === accountId) patch.invoiceMonth = editing.invoiceMonth
       await repo.updateTransaction(editing.id, patch)
+      // Renomear um importado pode virar de/para: renomeia os outros iguais e as próximas importações
+      if (offerRemember && rememberName) {
+        const rule = await repo.saveRule({ pattern: defaultPattern(editing.bankText!), renameTo: finalDescription, categoryId })
+        return repo.applyRule(rule)
+      }
       return
     }
 
@@ -141,7 +152,7 @@ function TransactionForm({
       account, () => crypto.randomUUID(), accounts.find((a) => a.id === toAccountId),
     )
     await repo.createTransactions(rows)
-  }, ['transactions', 'recurrences'])
+  }, ['transactions', 'recurrences', 'rules'])
 
   const remove = useRepoMutation(async (repo, scope: 'one' | 'rest') => {
     if (!editing) return
@@ -156,10 +167,12 @@ function TransactionForm({
     setSubmitted(true)
     if (!valid) return
     save.mutate(undefined, {
-      onSuccess: () => {
+      onSuccess: (renamed) => {
         onOpenChange(false)
+        const others = typeof renamed === 'number' ? renamed - 1 : 0
         toast.success(
-          editing ? 'Lançamento atualizado'
+          editing && others > 0 ? `Lançamento atualizado · ${others === 1 ? 'mais 1 renomeado' : `mais ${others} renomeados`}`
+            : editing ? 'Lançamento atualizado'
             : repeat !== 'none' ? 'Lançamento recorrente criado'
             : installments > 1 && type === 'expense' ? `${installments} parcelas lançadas`
             : 'Lançamento salvo',
@@ -308,6 +321,13 @@ function TransactionForm({
           <AccountSelect label={type === 'income' ? 'Recebido em' : 'Pago com'} id={`${formId}-acc`}
             accounts={type === 'income' ? activeAccounts.filter((a) => a.type !== 'credit_card' || a.id === accountId) : activeAccounts}
             value={accountId} onChange={setAccountId} error={submitted ? errors.account : null} />
+        )}
+
+        {offerRemember && (
+          <div className="-mt-2 rounded-xl bg-raised px-3.5 py-3">
+            <Toggle checked={rememberName} onChange={setRememberName} label="Usar este nome sempre"
+              description={`Quando o extrato mostrar “${defaultPattern(editing!.bankText!)}”, inclusive nos já importados.`} />
+          </div>
         )}
 
         <DatePicker id={`${formId}-date`} value={date} onChange={setDate} />

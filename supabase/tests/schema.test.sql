@@ -73,6 +73,18 @@ do $$ begin
   end;
 end $$;
 
+-- Regras de nomes
+select set_config('test.foreign_category', (select id::text from categories limit 1), false);
+insert into description_rules (pattern, rename_to, category_id) values
+  ('pag josedasilva', 'Feira do José', (select id from categories where name = 'Mercado' limit 1));
+do $$ begin
+  begin
+    insert into description_rules (pattern, rename_to) values ('PAG*Maiúsculas', 'x');
+    raise exception 'deveria ter falhado';
+  exception when check_violation then null;
+  end;
+end $$;
+
 -- Isolamento: o usuário 2 não vê nem usa dados do usuário 1
 select set_config('request.jwt.claim.sub', '22222222-2222-2222-2222-222222222222', false);
 do $$ begin
@@ -80,6 +92,7 @@ do $$ begin
   assert (select count(*) from transactions) = 0, 'RLS em lançamentos';
   assert (select count(*) from account_balances) = 0, 'RLS na view de saldos';
   assert (select count(*) from categories) = 15, 'vê só as próprias categorias';
+  assert (select count(*) from description_rules) = 0, 'RLS nas regras';
 end $$;
 
 do $$ begin
@@ -89,6 +102,13 @@ do $$ begin
     raise exception 'deveria ter falhado';
   exception when others then
     assert sqlerrm <> 'deveria ter falhado', 'não pode lançar em conta alheia';
+  end;
+  begin
+    insert into description_rules (pattern, rename_to, category_id) values ('abc', 'x',
+      current_setting('test.foreign_category')::uuid);
+    raise exception 'deveria ter falhado';
+  exception when others then
+    assert sqlerrm <> 'deveria ter falhado', 'regra não pode usar categoria alheia';
   end;
   begin
     insert into accounts (user_id, name) values ('11111111-1111-1111-1111-111111111111', 'Forjada');

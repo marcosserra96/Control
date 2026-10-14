@@ -9,6 +9,7 @@ Controle financeiro pessoal que funciona no celular e no computador, instalável
 - **Metas** — objetivos de economia, aportes e quanto guardar por mês.
 - **Relatórios** — entradas e saídas por mês e gastos por categoria.
 - **Importar extrato** — traga os gastos do banco em OFX ou CSV (Nubank, Inter, Bradesco, Santander, Caixa e outros), com categoria sugerida e sem duplicar o que já foi lançado.
+- **Nomes do extrato** — troque “PAG*JOSEDASILVA” por “Feira do José” uma vez e o app lembra nas próximas importações e no que já foi importado. Pix e transferências para empresas com CNPJ ganham o nome fantasia automaticamente.
 - **Exportação** — todos os lançamentos em CSV.
 
 ## Como colocar no ar
@@ -18,7 +19,7 @@ São três etapas: banco de dados (Supabase), hospedagem (Vercel) e instalação
 ### 1. Supabase (banco e login)
 
 1. Crie uma conta em [supabase.com](https://supabase.com) e um projeto novo (região **South America (São Paulo)**). Guarde a senha do banco.
-2. No projeto, abra **SQL Editor → New query**, cole todo o conteúdo de [`supabase/migrations/0001_schema.sql`](supabase/migrations/0001_schema.sql) e clique em **Run**. Repita com [`0002_import.sql`](supabase/migrations/0002_import.sql). Sempre que surgir um arquivo novo em `supabase/migrations`, rode só ele, em ordem.
+2. No projeto, abra **SQL Editor → New query**, cole todo o conteúdo de [`supabase/migrations/0001_schema.sql`](supabase/migrations/0001_schema.sql) e clique em **Run**. Repita com [`0002_import.sql`](supabase/migrations/0002_import.sql) e [`0003_description_rules.sql`](supabase/migrations/0003_description_rules.sql). Sempre que surgir um arquivo novo em `supabase/migrations`, rode só ele, em ordem.
 3. Em **Project Settings → API**, copie a **Project URL** e a chave **anon public**.
 4. Em **Authentication → URL Configuration**, preencha **Site URL** com o endereço do Vercel (ex.: `https://control-xyz.vercel.app`) depois do passo 2 abaixo. Sem isso, os links de confirmação e de redefinir senha apontam para o lugar errado.
 
@@ -85,6 +86,7 @@ Decisões que vale conhecer:
 - **Pagar fatura = transferência** da conta para o cartão, vinculada ao mês da fatura. O saldo do cartão negativo é o valor devido.
 - **Recorrências são geradas no banco** (`generate_recurring`), de forma idempotente, até o fim do mês corrente; as futuras nascem como pendentes. Celular e computador abrindo juntos não duplicam lançamentos.
 - **Importação** acontece no aparelho: o arquivo do banco não é enviado a lugar nenhum; só os lançamentos confirmados vão para o banco de dados. Cada lançamento importado guarda o identificador do banco (`external_id`), então importar o mesmo arquivo de novo não duplica. Lançamentos feitos à mão com mesmo valor e data próxima (até 4 dias) são reconhecidos e só vinculados. O pagamento recebido na fatura do cartão é ignorado, porque o dinheiro já sai pela conta que pagou. As regras estão em `src/domain/import/` e cobertas por testes com arquivos de exemplo.
+- **Nomes do extrato** são regras “quando o texto do banco contiver X, chamar de Y”. O texto original de cada lançamento importado fica salvo normalizado (`bank_text`), então uma regra nova renomeia também o que já foi importado. Corrigir um nome na revisão da importação ou ao editar um lançamento importado cria a regra. Quando o texto traz um CNPJ válido (comum em Pix para empresas), o app consulta a [BrasilAPI](https://brasilapi.com.br) — gratuita e sem cadastro — e usa o nome fantasia; só o CNPJ sai do aparelho, e o resultado fica em cache local. Compras no cartão não trazem CNPJ, por isso dependem das regras.
 - **Offline:** o app abre e mostra os últimos dados salvos no aparelho; lançar exige conexão. O cache local é apagado ao sair da conta. Dados financeiros nunca vão para o cache do service worker.
 
 ## Próximos passos possíveis

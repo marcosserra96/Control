@@ -3,6 +3,7 @@ import { invoiceMonthFor, paymentInvoiceMonth } from '../invoice'
 import type { Account, Category, Cents, ISODate, NewTransaction, Transaction, TxType } from '../types'
 import { normalizeText, suggestCategory, type HistoryEntry } from './categorize'
 import type { Statement, StatementRow } from './parse'
+import { bankText, defaultPattern, findRule, type DescriptionRule } from './rules'
 
 /**
  * O que fazer com cada linha do extrato:
@@ -27,6 +28,13 @@ export interface ImportItem {
   categoryId: string | null
   toAccountId: string | null
   invoiceMonth: ISODate | null
+  /** Regra de/para que deu o nome, se houver */
+  rule: DescriptionRule | null
+  /** Nome proposto pelo app; se a pessoa mudar, vira regra (quando `remember`) */
+  suggestedDescription: string
+  remember: boolean
+  /** Nome encontrado automaticamente (consulta pública por CNPJ) */
+  foundBy?: 'cnpj'
 }
 
 export interface ReconcileInput {
@@ -37,6 +45,7 @@ export interface ReconcileInput {
   existing: Transaction[]
   history: HistoryEntry[]
   categories: Category[]
+  rules?: DescriptionRule[]
 }
 
 const MATCH_WINDOW_DAYS = 4
@@ -78,14 +87,17 @@ function guessCard(text: string, account: Account, accounts: Account[]): Account
   return (bank && cards.find((c) => normalizeText(c.name).includes(bank))) || (cards.length === 1 ? cards[0]! : null)
 }
 
-export function reconcile({ statement, account, accounts, existing, history, categories }: ReconcileInput): ImportItem[] {
+export function reconcile({ statement, account, accounts, existing, history, categories, rules = [] }: ReconcileInput): ImportItem[] {
   const isCard = account.type === 'credit_card' && !!account.closingDay && !!account.dueDay
   const invoice = isCard ? dominantInvoice(statement.rows, account) : null
   const byExternal = new Set(existing.filter((t) => t.externalId && t.accountId === account.id).map((t) => t.externalId!))
   const used = new Set<string>()
 
   return statement.rows.map((row, idx) => {
-    const base = { key: `${idx}:${row.externalId}`, row, description: row.description, amount: Math.abs(row.amount), date: row.date }
+    const base = {
+      key: `${idx}:${row.externalId}`, row, description: row.description, amount: Math.abs(row.amount), date: row.date,
+      rule: null, suggestedDescription: row.description, remember: true,
+    }
     const norm = normalizeText(row.raw)
 
     if (byExternal.has(row.externalId)) {
@@ -140,8 +152,13 @@ export function reconcile({ statement, account, accounts, existing, history, cat
     }
 
     const type: TxType = row.amount < 0 ? 'expense' : 'income'
+    // De/para da pessoa vem antes de tudo: nome e, se tiver, categoria
+    const rule = findRule(row.raw, rules)
+    const validCategory = rule?.categoryId && categories.some((c) => c.id === rule.categoryId && c.kind === type)
+    const description = rule ? rule.renameTo : row.description
     return { ...base, date, status: 'new' as const, reason: null, include: true, matchedTx: null, type,
-      categoryId: suggestCategory(row.description, row.raw, type, history, categories),
+      description, suggestedDescription: description, rule,
+      categoryId: validCategory ? rule!.categoryId : suggestCategory(description, row.raw, type, history, categories),
       toAccountId: null, invoiceMonth }
   })
 }
@@ -163,7 +180,7 @@ export function toWrites(items: ImportItem[], accountId: string, importId: strin
   const link: { id: string; patch: Partial<NewTransaction> }[] = []
   for (const it of items) {
     if (it.status === 'matched' && !it.include && it.matchedTx) {
-      link.push({ id: it.matchedTx.id, patch: { externalId: it.row.externalId, paid: true } })
+      link.push({ id: it.matchedTx.id, patch: { externalId: it.row.externalId, bankText: bankText(it.row.raw), paid: true } })
       continue
     }
     if (!it.include || it.status === 'duplicate' || it.status === 'ignored') continue
@@ -185,7 +202,22 @@ export function toWrites(items: ImportItem[], accountId: string, importId: strin
       recurrenceId: null,
       externalId: it.row.externalId,
       importId,
+      bankText: bankText(it.row.raw),
     })
   }
-  return { create, link }
+  return { create, link, rules: rulesToCreate(items) }
+}
+
+/** Nomes que a pessoa corrigiu na revisão viram regras para as próximas importações. */
+export function rulesToCreate(items: ImportItem[]): Omit<DescriptionRule, 'id'>[] {
+  const out = new Map<string, Omit<DescriptionRule, 'id'>>()
+  for (const it of items) {
+    if (!it.include || it.status !== 'new' || it.type === 'transfer' || !it.remember) continue
+    const name = it.description.trim()
+    if (!name || name === it.suggestedDescription.trim()) continue
+    const pattern = defaultPattern(it.row.raw)
+    if (pattern.length < 3) continue
+    out.set(pattern, { pattern, renameTo: name, categoryId: it.categoryId })
+  }
+  return [...out.values()]
 }

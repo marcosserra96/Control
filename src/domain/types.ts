@@ -57,6 +57,8 @@ export interface Transaction {
   externalId: string | null
   /** Lote de importação, para desfazer */
   importId: string | null
+  /** Texto original do banco, normalizado (só em importados) */
+  bankText: string | null
 }
 
 export type NewTransaction = Omit<Transaction, 'id'>

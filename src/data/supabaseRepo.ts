@@ -4,6 +4,7 @@ import { fromCents, toCents } from '@/domain/money'
 import type {
   Account, Budget, Category, Goal, GoalContribution, NewTransaction, Recurrence, Transaction,
 } from '@/domain/types'
+import type { DescriptionRule } from '@/domain/import/rules'
 import type { Repo } from './repo'
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -51,6 +52,7 @@ const transaction = (r: Row): Transaction => ({
   paid: r.paid, invoiceMonth: r.invoice_month, installmentGroup: r.installment_group,
   installmentNumber: r.installment_number, installmentTotal: r.installment_total,
   recurrenceId: r.recurrence_id, externalId: r.external_id ?? null, importId: r.import_id ?? null,
+  bankText: r.bank_text ?? null,
 })
 const transactionRow = (t: Partial<NewTransaction>): Row => strip({
   type: t.type, amount: t.amount === undefined ? undefined : fromCents(t.amount), date: t.date,
@@ -58,7 +60,7 @@ const transactionRow = (t: Partial<NewTransaction>): Row => strip({
   category_id: t.categoryId, paid: t.paid, invoice_month: t.invoiceMonth,
   installment_group: t.installmentGroup, installment_number: t.installmentNumber,
   installment_total: t.installmentTotal, recurrence_id: t.recurrenceId,
-  external_id: t.externalId, import_id: t.importId,
+  external_id: t.externalId, import_id: t.importId, bank_text: t.bankText,
 })
 
 const recurrence = (r: Row): Recurrence => ({
@@ -72,13 +74,17 @@ const goal = (r: Row): Goal => ({
   color: r.color, archived: r.archived,
 })
 
+const rule = (r: Row): DescriptionRule => ({
+  id: r.id, pattern: r.pattern, renameTo: r.rename_to, categoryId: r.category_id,
+})
+
 function strip(o: Row): Row {
   return Object.fromEntries(Object.entries(o).filter(([, v]) => v !== undefined))
 }
 
 const TX_COLUMNS =
   'id,type,amount,date,description,notes,account_id,to_account_id,category_id,paid,invoice_month,' +
-  'installment_group,installment_number,installment_total,recurrence_id,external_id,import_id'
+  'installment_group,installment_number,installment_total,recurrence_id,external_id,import_id,bank_text'
 
 // --- repositório -------------------------------------------------------------
 
@@ -199,6 +205,29 @@ export function createSupabaseRepo(db: SupabaseClient): Repo {
     },
     async deleteBudget(id) {
       check(await db.from('budgets').delete().eq('id', id))
+    },
+
+    async listRules() {
+      const rows = check(await db.from('description_rules').select('*').order('rename_to'))
+      return rows.map(rule)
+    },
+    async saveRule(r) {
+      const row = check(await db.from('description_rules').upsert(
+        strip({ id: r.id, pattern: r.pattern, rename_to: r.renameTo, category_id: r.categoryId }),
+        { onConflict: r.id ? 'id' : 'user_id,pattern' },
+      ).select('*').single())
+      return rule(row)
+    },
+    async deleteRule(id) {
+      check(await db.from('description_rules').delete().eq('id', id))
+    },
+    async applyRule(r) {
+      // O padrão só tem [a-z0-9 ], então é seguro dentro do ilike
+      const patch: Row = { description: r.renameTo }
+      if (r.categoryId) patch.category_id = r.categoryId
+      const rows = check(await db.from('transactions').update(patch)
+        .ilike('bank_text', `%${r.pattern}%`).neq('type', 'transfer').select('id'))
+      return rows.length
     },
 
     async listGoals() {

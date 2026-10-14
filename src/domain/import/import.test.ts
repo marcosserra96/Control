@@ -3,7 +3,9 @@ import type { Account, Category, Transaction } from '../types'
 import { suggestCategory } from './categorize'
 import { cleanDescription, extractInstallment } from './clean'
 import { decodeBytes, ImportError, parseStatement } from './parse'
-import { reconcile, toWrites } from './reconcile'
+import { reconcile, rulesToCreate, toWrites } from './reconcile'
+import { companyDisplayName, extractCnpj, isValidCnpj } from './cnpj'
+import { bankText, defaultPattern, findRule, type DescriptionRule } from './rules'
 
 // --- arquivos de exemplo ------------------------------------------------------
 
@@ -73,7 +75,7 @@ const categories = [cat('mercado', 'Mercado'), cat('rest', 'Restaurantes'), cat(
 const tx = (p: Partial<Transaction>): Transaction => ({
   id: Math.random().toString(36), type: 'expense', amount: 1000, date: '2026-10-10', description: 'x', notes: null,
   accountId: 'cc', toAccountId: null, categoryId: null, paid: true, invoiceMonth: null, installmentGroup: null,
-  installmentNumber: null, installmentTotal: null, recurrenceId: null, externalId: null, importId: null, ...p,
+  installmentNumber: null, installmentTotal: null, recurrenceId: null, externalId: null, importId: null, bankText: null, ...p,
 })
 
 // --- testes -------------------------------------------------------------------
@@ -224,6 +226,73 @@ describe('conciliação', () => {
     const { create, link } = toWrites(items, 'cc', 'imp-1', () => 'g')
     expect(create).toHaveLength(3)
     expect(create.every((c) => c.importId === 'imp-1' && c.externalId && c.paid)).toBe(true)
-    expect(link).toEqual([{ id: 'manual', patch: { externalId: 'f:A4', paid: true } }])
+    expect(link).toEqual([{ id: 'manual', patch: { externalId: 'f:A4', bankText: 'conta de luz enel', paid: true } }])
+  })
+})
+
+describe('de/para de nomes', () => {
+  const rules: DescriptionRule[] = [
+    { id: 'r1', pattern: 'pag josedasilva', renameTo: 'Feira do José', categoryId: 'mercado' },
+    { id: 'r2', pattern: 'ifood', renameTo: 'iFood', categoryId: null },
+    { id: 'r3', pattern: 'ifood club', renameTo: 'iFood Club', categoryId: 'rest' },
+  ]
+
+  it('normaliza o texto do banco e sugere padrão sem números variáveis', () => {
+    expect(bankText('PAG*JoséDaSilva 0042')).toBe('pag josedasilva 0042')
+    expect(defaultPattern('PAG*JoséDaSilva 0042')).toBe('pag josedasilva')
+    expect(defaultPattern('Compra no débito - RESTAURANTE SABOR CASEIRO')).toBe('restaurante sabor caseiro')
+    expect(defaultPattern('COMPRA CARTAO DEB MC 12/10 PADARIA REAL')).toBe('padaria real')
+    expect(defaultPattern('Transferência enviada pelo Pix - ACADEMIA CORPO SAO - 11.222.333/0001-81')).toBe('academia corpo sao')
+    expect(defaultPattern('12345')).toBe('12345')
+  })
+
+  it('usa a regra mais específica', () => {
+    expect(findRule('IFD*IFOOD CLUB', rules)?.id).toBe('r3')
+    expect(findRule('IFOOD *RESTAURANTE', rules)?.id).toBe('r2')
+    expect(findRule('PADARIA', rules)).toBeNull()
+  })
+
+  it('aplica nome e categoria da regra na importação', () => {
+    const csv = 'Data,Valor,Descrição\n05/10/2026,-35.00,PAG*JOSEDASILVA 0042\n06/10/2026,-20.00,LOJA NOVA'
+    const items = reconcile({ statement: parseStatement(csv), account: checking, accounts: [checking],
+      existing: [], history: [], categories, rules })
+    expect(items[0]).toMatchObject({ description: 'Feira do José', categoryId: 'mercado', rule: { id: 'r1' } })
+    expect(items[1]?.rule).toBeNull()
+  })
+
+  it('transforma nomes corrigidos na revisão em regras', () => {
+    const csv = 'Data,Valor,Descrição\n05/10/2026,-35.00,EC *CANTINAMARIA 123\n06/10/2026,-20.00,LOJA NOVA'
+    const items = reconcile({ statement: parseStatement(csv), account: checking, accounts: [checking],
+      existing: [], history: [], categories })
+    items[0] = { ...items[0]!, description: 'Almoço no trabalho', categoryId: 'rest' }
+    expect(rulesToCreate(items)).toEqual([{ pattern: 'ec cantinamaria', renameTo: 'Almoço no trabalho', categoryId: 'rest' }])
+    items[0] = { ...items[0]!, remember: false }
+    expect(rulesToCreate(items)).toEqual([])
+  })
+
+  it('guarda o texto do banco nos lançamentos importados', () => {
+    const items = reconcile({ statement: parseStatement('Data,Valor,Descrição\n05/10/2026,-35.00,PAG*X Y'),
+      account: checking, accounts: [checking], existing: [], history: [], categories })
+    expect(toWrites(items, 'cc', 'i', () => 'g').create[0]?.bankText).toBe('pag x y')
+  })
+})
+
+describe('CNPJ no extrato', () => {
+  it('valida dígitos verificadores', () => {
+    expect(isValidCnpj('11222333000181')).toBe(true)
+    expect(isValidCnpj('11222333000182')).toBe(false)
+    expect(isValidCnpj('11111111111111')).toBe(false)
+  })
+  it('acha CNPJ formatado ou não, e ignora CPF e números aleatórios', () => {
+    expect(extractCnpj('Pix enviado - LOJA X - 11.222.333/0001-81 - BANCO')).toBe('11222333000181')
+    expect(extractCnpj('PIX 11222333000181')).toBe('11222333000181')
+    expect(extractCnpj('Pix - FULANO - •••.123.456-•• - NU')).toBeNull()
+    expect(extractCnpj('Pix - 12.345.678/0001-90')).toBeNull() // dígitos inválidos
+  })
+  it('monta nome legível a partir dos dados da empresa', () => {
+    expect(companyDisplayName('', 'PADARIA E CONFEITARIA ESTRELA LTDA')).toBe('Padaria e Confeitaria Estrela')
+    expect(companyDisplayName('ESTRELA PÃES', 'PADARIA ESTRELA LTDA')).toBe('Estrela Pães')
+    expect(companyDisplayName(null, '12.345.678 JOAO DA SILVA')).toBe('Joao da Silva')
+    expect(companyDisplayName('', 'MESA POSTA COMERCIO S/A')).toBe('Mesa Posta Comercio')
   })
 })

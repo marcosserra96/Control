@@ -2,7 +2,7 @@ import { useEffect, useState, type ReactNode } from 'react'
 import { NavLink, Outlet, useLocation } from 'react-router'
 import { useQueryClient } from '@tanstack/react-query'
 import {
-  BarChart3, FileUp, Home, LayoutGrid, ListOrdered, Plus, Settings, Tags, Target, WalletCards, WifiOff,
+  BarChart3, FileUp, Home, LayoutGrid, ListOrdered, Plus, Replace, Settings, Tags, Target, WalletCards, WifiOff,
   type LucideIcon,
 } from 'lucide-react'
 import { useAuth } from '@/auth/AuthProvider'
@@ -29,6 +29,7 @@ const primary: NavItem[] = [
 const secondary: NavItem[] = [
   { to: '/importar', label: 'Importar extrato', icon: FileUp },
   { to: '/categorias', label: 'Categorias', icon: Tags },
+  { to: '/nomes', label: 'Nomes do extrato', icon: Replace },
   { to: '/ajustes', label: 'Ajustes', icon: Settings },
 ]
 
@@ -128,7 +129,7 @@ function BottomBar({ onNew }: { onNew: () => void }) {
     { to: '/mais', label: 'Mais', icon: LayoutGrid },
   ]
   const { pathname } = useLocation()
-  const moreActive = ['/mais', '/contas', '/relatorios', '/categorias', '/ajustes', '/importar'].some((p) => pathname.startsWith(p))
+  const moreActive = ['/mais', '/contas', '/relatorios', '/categorias', '/ajustes', '/importar', '/nomes'].some((p) => pathname.startsWith(p))
 
   return (
     <nav

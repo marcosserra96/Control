@@ -13,6 +13,7 @@ import { PlanPage } from '@/features/plan/PlanPage'
 import { RecurrencesTab } from '@/features/plan/RecurrencesTab'
 import { CategoriesPage } from '@/features/settings/CategoriesPage'
 import { MorePage } from '@/features/settings/MorePage'
+import { RulesPage } from '@/features/settings/RulesPage'
 import { SettingsPage } from '@/features/settings/SettingsPage'
 import { TransactionsPage } from '@/features/transactions/TransactionsPage'
 import { TxSheetProvider } from '@/features/transactions/TransactionSheet'
@@ -79,6 +80,7 @@ const router = createBrowserRouter([
           },
           { path: 'relatorios', element: <Suspense fallback={<RowsSkeleton />}><ReportsPage /></Suspense> },
           { path: 'categorias', element: <CategoriesPage /> },
+          { path: 'nomes', element: <RulesPage /> },
           { path: 'ajustes', element: <SettingsPage /> },
           { path: 'mais', element: <MorePage /> },
           { path: '*', element: <Navigate to="/" replace /> },

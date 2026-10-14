@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type DragEvent } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { Check, ChevronDown, FileUp, Info, Undo2 } from 'lucide-react'
+import { Check, ChevronDown, FileUp, Info, Replace, Undo2 } from 'lucide-react'
 import { PageHeader } from '@/app/AppLayout'
 import { Button } from '@/components/ui/Button'
 import { CategoryIcon, TransferIcon } from '@/components/ui/CategoryIcon'
@@ -11,10 +11,13 @@ import { useToast } from '@/components/ui/Toast'
 import { shortDate } from '@/domain/dates'
 import { formatBRL } from '@/domain/money'
 import { reconcile, statementRange, toWrites, type ImportItem } from '@/domain/import/reconcile'
+import { extractCnpj } from '@/domain/import/cnpj'
+import { suggestCategory } from '@/domain/import/categorize'
+import { lookupCompanies } from '@/lib/companyLookup'
 import { decodeBytes, ImportError, parseStatement, type Statement } from '@/domain/import/parse'
 import { normalizeText } from '@/domain/import/categorize'
 import type { Account, Category } from '@/domain/types'
-import { useAccounts, useCategories, useDescriptions, useRepo } from '@/data/queries'
+import { useAccounts, useCategories, useDescriptions, useRepo, useRules } from '@/data/queries'
 import { RowsSkeleton } from '@/features/dashboard/DashboardPage'
 import { cn } from '@/lib/cn'
 
@@ -162,11 +165,13 @@ function Review({ loaded, onReset }: { loaded: Loaded; onReset: () => void }) {
   const accounts = useAccounts()
   const categories = useCategories()
   const history = useDescriptions()
+  const rules = useRules()
   const [accountId, setAccountId] = useState('')
+  const [looking, setLooking] = useState(false)
   const [items, setItems] = useState<ImportItem[] | null>(null)
   const [filter, setFilter] = useState<Filter>('new')
   const [saving, setSaving] = useState(false)
-  const [done, setDone] = useState<{ created: number; linked: number; importId: string; accountId: string } | null>(null)
+  const [done, setDone] = useState<{ created: number; linked: number; remembered: number; importId: string; accountId: string } | null>(null)
 
   useEffect(() => {
     if (accounts.data && !accountId) setAccountId(guessAccount(statement, accounts.data, params.get('conta')))
@@ -182,12 +187,38 @@ function Review({ loaded, onReset }: { loaded: Loaded; onReset: () => void }) {
 
   // Recalcula a conciliação ao trocar de conta (ou quando os dados chegam)
   useEffect(() => {
-    if (!account || !existing.data || !categories.data || !history.data) return
+    if (!account || !existing.data || !categories.data || !history.data || !rules.data) return
     setItems(reconcile({
       statement, account, accounts: accounts.data ?? [], existing: existing.data,
-      history: history.data, categories: categories.data,
+      history: history.data, categories: categories.data, rules: rules.data,
     }))
-  }, [account, existing.data, categories.data, history.data, statement, accounts.data])
+  }, [account, existing.data, categories.data, history.data, rules.data, statement, accounts.data])
+
+  // Busca o nome real das empresas pelo CNPJ que vem no extrato (Pix, transferências)
+  const lookupKey = items ? `${accountId}:${items.length}` : ''
+  useEffect(() => {
+    if (!items || !lookupKey) return
+    const targets = items.filter((i) => i.status === 'new' && !i.rule && i.type !== 'transfer' && extractCnpj(i.row.raw))
+    if (!targets.length) return
+    let cancelled = false
+    setLooking(true)
+    lookupCompanies(targets.map((i) => extractCnpj(i.row.raw)!)).then((found) => {
+      if (cancelled || !found.size) return
+      setItems((list) => list?.map((i) => {
+        const company = i.status === 'new' && !i.rule ? found.get(extractCnpj(i.row.raw) ?? '') : undefined
+        // Não sobrescreve o que a pessoa já editou
+        if (!company || i.description !== i.suggestedDescription) return i
+        const kind = i.type === 'income' ? 'income' : 'expense'
+        return {
+          ...i, description: company.name, suggestedDescription: company.name, foundBy: 'cnpj' as const,
+          categoryId: i.categoryId ?? suggestCategory(company.name, `${i.row.raw} ${company.activity ?? ''}`, kind,
+            history.data ?? [], categories.data ?? []),
+        }
+      }) ?? null)
+    }).finally(() => { if (!cancelled) setLooking(false) })
+    return () => { cancelled = true }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lookupKey])
 
   const counts = useMemo(() => ({
     new: items?.filter((i) => i.status === 'new').length ?? 0,
@@ -215,14 +246,16 @@ function Review({ loaded, onReset }: { loaded: Loaded; onReset: () => void }) {
     setSaving(true)
     const importId = crypto.randomUUID()
     try {
-      const { create, link } = toWrites(items, account.id, importId, () => crypto.randomUUID())
+      const { create, link, rules: newRules } = toWrites(items, account.id, importId, () => crypto.randomUUID())
       for (let i = 0; i < create.length; i += 300) await repo.createTransactions(create.slice(i, i + 300))
       for (const l of link) await repo.updateTransaction(l.id, l.patch)
+      // Nomes corrigidos na revisão viram de/para para as próximas importações
+      for (const r of newRules) await repo.saveRule(r)
       if (statement.accountKey && account.importKey !== statement.accountKey) {
         await repo.saveAccount({ ...account, importKey: statement.accountKey })
       }
-      await Promise.all(['transactions', 'balances', 'descriptions', 'accounts'].map((k) => qc.invalidateQueries({ queryKey: [k] })))
-      setDone({ created: create.length, linked: link.length, importId, accountId: account.id })
+      await Promise.all(['transactions', 'balances', 'descriptions', 'accounts', 'rules'].map((k) => qc.invalidateQueries({ queryKey: [k] })))
+      setDone({ created: create.length, linked: link.length, remembered: newRules.length, importId, accountId: account.id })
     } catch (e) {
       toast.error(e)
     } finally {
@@ -256,6 +289,12 @@ function Review({ loaded, onReset }: { loaded: Loaded; onReset: () => void }) {
             {done.linked === 1
               ? '1 lançamento que você já tinha feito foi reconhecido e não foi duplicado.'
               : `${done.linked} lançamentos que você já tinha feito foram reconhecidos e não foram duplicados.`}
+          </p>
+        )}
+        {done.remembered > 0 && (
+          <p className="mt-2 text-sm text-muted">
+            {done.remembered === 1 ? '1 nome corrigido foi lembrado' : `${done.remembered} nomes corrigidos foram lembrados`} para as próximas importações.{' '}
+            <Link to="/nomes" className="font-semibold text-brass hover:underline">Ver nomes do extrato</Link>
           </p>
         )}
         <div className="mt-8 flex flex-col gap-2 sm:flex-row sm:justify-center">
@@ -313,9 +352,10 @@ function Review({ loaded, onReset }: { loaded: Loaded; onReset: () => void }) {
             ))}
           </div>
           <p className="mb-3 px-1 text-[13px] text-faint">
-            {filter === 'new' && 'Confira as categorias. Desmarque o que não quiser importar.'}
+            {filter === 'new' && 'Confira nomes e categorias. Toque no nome para corrigir; o app lembra nas próximas vezes.'}
             {filter === 'known' && 'Já estão no app: lançados por você ou importados antes. Não serão duplicados.'}
             {filter === 'ignored' && 'Pagamentos de fatura no cartão não viram lançamento: o dinheiro sai pela conta que pagou.'}
+            {looking && filter === 'new' && <span className="block text-muted">Buscando o nome das empresas pelo CNPJ…</span>}
           </p>
 
           {visible.length === 0 ? (
@@ -431,6 +471,9 @@ function ItemRow({
             <span className="text-[13px] text-muted">{item.reason}</span>
           ) : null}
         </div>
+        {editable && item.status === 'new' && item.type !== 'transfer' && (
+          <NameOrigin item={item} onChange={onChange} />
+        )}
         {item.status === 'matched' && item.matchedTx && !item.include && (
           <p className="mt-1 text-[12px] text-faint">
             Lançado como “{item.matchedTx.description}” em {shortDate(item.matchedTx.date)} · {formatBRL(item.matchedTx.amount)}
@@ -438,5 +481,31 @@ function ItemRow({
         )}
       </div>
     </li>
+  )
+}
+
+/** Mostra de onde veio o nome e, se a pessoa corrigiu, oferece lembrar. */
+function NameOrigin({ item, onChange }: { item: ImportItem; onChange: (p: Partial<ImportItem>) => void }) {
+  const edited = item.description.trim() !== item.suggestedDescription.trim()
+  const renamed = item.description.trim() !== item.row.description.trim()
+  if (!edited && !renamed && !item.rule && !item.foundBy) return null
+  return (
+    <div className="mt-1.5 flex flex-col gap-1">
+      {(renamed || item.rule || item.foundBy) && (
+        <p className="flex min-w-0 items-center gap-1.5 text-[12px] text-faint">
+          <Replace className="size-3 shrink-0" aria-hidden />
+          <span className="truncate">No banco: {item.row.raw}</span>
+          {!edited && item.rule && <span className="shrink-0 rounded bg-brass-soft px-1.5 font-semibold text-brass">seu nome</span>}
+          {!edited && item.foundBy === 'cnpj' && <span className="shrink-0 rounded bg-raised px-1.5 font-semibold text-muted">pelo CNPJ</span>}
+        </p>
+      )}
+      {edited && item.description.trim() && (
+        <label className="flex cursor-pointer items-center gap-2 text-[12px] font-semibold text-muted">
+          <input type="checkbox" checked={item.remember} onChange={(e) => onChange({ remember: e.target.checked })}
+            className="size-4 accent-[var(--c-brass)]" />
+          Lembrar este nome nas próximas importações
+        </label>
+      )}
+    </div>
   )
 }

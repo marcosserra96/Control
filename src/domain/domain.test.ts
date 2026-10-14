@@ -18,7 +18,7 @@ function tx(p: Partial<Transaction>): Transaction {
     id: Math.random().toString(36), type: 'expense', amount: 1000, date: '2026-10-10', description: 'x',
     notes: null, accountId: 'cc', toAccountId: null, categoryId: null, paid: true, invoiceMonth: null,
     installmentGroup: null, installmentNumber: null, installmentTotal: null, recurrenceId: null,
-    externalId: null, importId: null, ...p,
+    externalId: null, importId: null, bankText: null, ...p,
   }
 }
 

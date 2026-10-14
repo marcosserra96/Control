@@ -3,6 +3,7 @@ import { invoiceMonthFor } from '@/domain/invoice'
 import type {
   Account, Budget, Category, Cents, Goal, GoalContribution, ISODate, NewTransaction, Recurrence, Transaction,
 } from '@/domain/types'
+import type { DescriptionRule } from '@/domain/import/rules'
 import type { Repo } from './repo'
 
 /**
@@ -34,7 +35,7 @@ export function createMemoryRepo(seed = demoSeed()): Repo {
           paid: isCard || date <= today(),
           invoiceMonth: isCard ? invoiceMonthFor(date, acc.closingDay!, acc.dueDay!) : null,
           installmentGroup: null, installmentNumber: null, installmentTotal: null, recurrenceId: r.id,
-          externalId: null, importId: null,
+          externalId: null, importId: null, bankText: null,
         })
         n++
       }
@@ -143,6 +144,27 @@ export function createMemoryRepo(seed = demoSeed()): Repo {
       return delay(undefined)
     },
 
+    listRules: () => delay([...db.rules].sort((a, b) => a.renameTo.localeCompare(b.renameTo))),
+    async saveRule(r) {
+      const existing = db.rules.find((x) => x.id === r.id || x.pattern === r.pattern)
+      const saved = { ...r, id: existing?.id ?? r.id ?? id() } as DescriptionRule
+      db.rules = [...db.rules.filter((x) => x.id !== saved.id), saved]
+      return delay(saved)
+    },
+    async deleteRule(rId) {
+      db.rules = db.rules.filter((r) => r.id !== rId)
+      return delay(undefined)
+    },
+    async applyRule(r) {
+      let n = 0
+      db.transactions = db.transactions.map((t) => {
+        if (t.type === 'transfer' || !t.bankText?.includes(r.pattern)) return t
+        n++
+        return { ...t, description: r.renameTo, categoryId: r.categoryId ?? t.categoryId }
+      })
+      return delay(n)
+    },
+
     listGoals: () => delay(db.goals),
     async saveGoal(g) {
       const saved = { ...g, id: g.id ?? id() } as Goal
@@ -176,6 +198,7 @@ interface Seed {
   budgets: Budget[]
   goals: Goal[]
   contributions: GoalContribution[]
+  rules: DescriptionRule[]
 }
 
 export function demoSeed(ref: ISODate = today()): Seed {
@@ -220,7 +243,7 @@ export function demoSeed(ref: ISODate = today()): Seed {
       paid: isCard || p.date <= ref,
       invoiceMonth: isCard && p.type !== 'transfer' ? invoiceMonthFor(p.date, a.closingDay!, a.dueDay!) : null,
       installmentGroup: null, installmentNumber: null, installmentTotal: null, recurrenceId: null,
-      externalId: null, importId: null, ...p,
+      externalId: null, importId: null, bankText: null, ...p,
     })
   }
 
@@ -274,7 +297,7 @@ export function demoSeed(ref: ISODate = today()): Seed {
       accountId: cartao.id, toAccountId: null, categoryId: c.compras.id, paid: true,
       invoiceMonth: addMonths(invoiceMonthFor(start, cartao.closingDay!, cartao.dueDay!), i),
       installmentGroup: group, installmentNumber: i + 1, installmentTotal: 10, recurrenceId: null,
-      externalId: null, importId: null,
+      externalId: null, importId: null, bankText: null,
     })
   }
 
@@ -305,6 +328,10 @@ export function demoSeed(ref: ISODate = today()): Seed {
     accounts: [nubank, reserva, carteira, cartao, cartao2],
     categories: Object.values(c),
     transactions, recurrences, budgets, goals: [viagem, emergencia], contributions,
+    rules: [
+      { id: id('rule'), pattern: 'pag josedasilva', renameTo: 'Feira do José', categoryId: c.mercado.id },
+      { id: id('rule'), pattern: 'ec cantinadamaria', renameTo: 'Almoço no trabalho', categoryId: c.restaurantes.id },
+    ],
   }
 }
 

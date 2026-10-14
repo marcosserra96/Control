@@ -44,6 +44,7 @@ export function composeTransactions(
     recurrenceId: null,
     externalId: null,
     importId: null,
+    bankText: null,
   }
 
   const n = draft.type === 'transfer' ? 1 : Math.max(1, Math.floor(draft.installments))
