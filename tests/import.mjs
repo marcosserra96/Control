@@ -1,6 +1,7 @@
 // Importação de extrato ponta a ponta no modo demonstração.
 // Uso: npm run demo (outro terminal) && node tests/import.mjs
 import { chromium, expect } from '@playwright/test'
+import { emulateModernBrowser } from './modern-browser.mjs'
 
 const base = process.env.BASE ?? 'http://localhost:5180'
 const out = process.env.OUT ?? 'screenshots'
@@ -9,7 +10,9 @@ const browser = await chromium.launch()
 const errors = []
 
 for (const [name, viewport] of [['mobile', { width: 390, height: 844 }], ['desktop', { width: 1440, height: 900 }]]) {
-  const page = await browser.newPage({ viewport, deviceScaleFactor: name === 'mobile' ? 2 : 1 })
+  const context = await browser.newContext({ viewport, deviceScaleFactor: name === 'mobile' ? 2 : 1 })
+  await emulateModernBrowser(context)
+  const page = await context.newPage()
   page.on('pageerror', (e) => errors.push(`${name}: ${e.message}`))
   // Consulta pública de CNPJ simulada (o teste não depende da internet)
   await page.route('https://brasilapi.com.br/api/cnpj/v1/**', (route) => route.fulfill({

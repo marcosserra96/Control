@@ -39,7 +39,11 @@ export function AppLayout() {
   const online = useOnline()
   const { pathname } = useLocation()
 
-  useEffect(() => window.scrollTo(0, 0), [pathname])
+  // Com chaves de propósito: navegadores novos fazem scrollTo devolver uma Promise,
+  // e um efeito não pode devolver nada além de uma função de limpeza.
+  useEffect(() => {
+    window.scrollTo(0, 0)
+  }, [pathname])
 
   // Atalho no computador: N abre um novo lançamento
   useEffect(() => {

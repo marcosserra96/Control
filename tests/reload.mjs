@@ -1,9 +1,12 @@
 // Reabre cada tela com os dados guardados no aparelho (cache local), como acontece no uso real.
 // Uso: build de produção servido em BASE (ex.: vite build --mode demo && vite preview)
 import { chromium } from '@playwright/test'
+import { emulateModernBrowser } from './modern-browser.mjs'
 const base = process.env.BASE ?? 'http://localhost:5191'
 const browser = await chromium.launch()
-const page = await browser.newPage({ viewport: { width: 390, height: 844 } })
+const context = await browser.newContext({ viewport: { width: 390, height: 844 } })
+await emulateModernBrowser(context)
+const page = await context.newPage()
 const errors = []
 page.on('pageerror', (e) => errors.push(e.message))
 const routes = ['/', '/extrato', '/contas', '/contas/acc-1', '/contas/acc-4', '/planejar', '/planejar/recorrentes',

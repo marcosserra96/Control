@@ -68,7 +68,7 @@ npm run demo
 | `npm run typecheck` | Checagem de tipos |
 | `npm test` | Regras de dinheiro, datas, faturas, parcelas, orçamento e metas |
 | `npm run build` | Tipos + build de produção (o mesmo que o Vercel roda) |
-| `npm run test:prod` | Build de produção (modo demonstração) reaberto em cada tela com os dados guardados no aparelho |
+| `npm run test:prod` | Os testes de ponta a ponta no build de produção, simulando navegadores recentes (Chrome/Edge 15x) |
 | `npm run db:bundle` | Atualiza `supabase/setup.sql` depois de criar uma migração nova |
 | `npm run test:db` | Schema contra um Postgres local: RLS, saldos, faturas, recorrências (`PGHOST`, `PGPORT`, `PGUSER`) |
 | `npm run test:ui` | Com `npm run demo` rodando: lançamento parcelado, importação de extrato e checagem de layout no celular |

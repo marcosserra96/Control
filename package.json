@@ -1,7 +1,7 @@
 {
   "name": "control",
   "private": true,
-  "version": "0.3.2",
+  "version": "0.3.3",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -14,7 +14,7 @@
     "test:ui": "node tests/flow.mjs && node tests/import.mjs && node tests/overflow.mjs",
     "icons": "node scripts/icons.mjs",
     "db:bundle": "node scripts/db-bundle.mjs",
-    "test:prod": "vite build --mode demo --outDir dist-demo && (vite preview --outDir dist-demo --port 5191 --strictPort & sleep 3; node tests/reload.mjs; s=$?; kill %1; exit $s)"
+    "test:prod": "vite build --mode demo --outDir dist-demo && (vite preview --outDir dist-demo --port 5191 --strictPort & sleep 3; export BASE=http://localhost:5191; node tests/flow.mjs && node tests/import.mjs && node tests/reload.mjs; s=$?; kill %1; exit $s)"
   },
   "dependencies": {
     "@fontsource-variable/bricolage-grotesque": "^5.3.0",

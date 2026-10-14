@@ -1,11 +1,13 @@
 // Fluxo ponta a ponta no modo demonstração: lança uma compra parcelada no cartão
 // e confere a fatura. Uso: npm run demo (outro terminal) && node tests/flow.mjs
 import { chromium, expect } from '@playwright/test'
+import { emulateModernBrowser } from './modern-browser.mjs'
 
 const base = process.env.BASE ?? 'http://localhost:5180'
 const out = process.env.OUT ?? 'screenshots'
 const browser = await chromium.launch()
 const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, locale: 'pt-BR' })
+await emulateModernBrowser(ctx)
 const page = await ctx.newPage()
 const errors = []
 page.on('pageerror', (e) => errors.push(e.message))
