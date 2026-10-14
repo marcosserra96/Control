@@ -55,6 +55,13 @@ export default defineConfig({
   ],
   build: {
     target: 'es2022',
+    rollupOptions: {
+      output: {
+        // As variáveis de ambiente ficam num arquivo próprio: o resto do build sai idêntico
+        // em qualquer ambiente, o que permite traduzir posições de erros publicados.
+        manualChunks: (id: string) => (id.includes('/src/lib/supabase.ts') ? 'env' : undefined),
+      },
+    },
     chunkSizeWarningLimit: 700,
   },
   test: {

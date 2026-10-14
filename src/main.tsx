@@ -5,6 +5,7 @@ import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client
 import { createSyncStoragePersister } from '@tanstack/query-sync-storage-persister'
 import { App } from './app/App'
 import { applyTheme } from './app/theme'
+import { recordError } from './lib/diagnostics'
 import './styles.css'
 
 applyTheme()
@@ -25,7 +26,10 @@ const queryClient = new QueryClient({
 // Guarda a última leitura no aparelho: o app abre na hora, mesmo sem internet.
 const persister = createSyncStoragePersister({ storage: window.localStorage, key: 'control:cache', throttleTime: 2000 })
 
-createRoot(document.getElementById('root')!).render(
+createRoot(document.getElementById('root')!, {
+  onCaughtError: (error, info) => recordError(error, info.componentStack),
+  onUncaughtError: (error, info) => recordError(error, info.componentStack),
+}).render(
   <StrictMode>
     <PersistQueryClientProvider client={queryClient} persistOptions={{ persister, maxAge: 7 * 24 * 60 * 60 * 1000, buster: __APP_VERSION__ }}>
       <App />

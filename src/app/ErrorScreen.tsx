@@ -1,5 +1,7 @@
+import { useState } from 'react'
 import { useRouteError } from 'react-router'
-import { RefreshCw } from 'lucide-react'
+import { Check, Copy, RefreshCw } from 'lucide-react'
+import { lastError } from '@/lib/diagnostics'
 import { LogoMark } from './Logo'
 
 /**
@@ -9,6 +11,27 @@ import { LogoMark } from './Logo'
 export function ErrorScreen() {
   const error = useRouteError()
   const detail = error instanceof Error ? error.message : String(error ?? '')
+  const [copied, setCopied] = useState(false)
+  const diag = lastError()
+  const report = [
+    `Control ${__APP_VERSION__} · ${new Date().toISOString()}`,
+    `Página: ${window.location.pathname}`,
+    `Navegador: ${navigator.userAgent}`,
+    `Erro: ${detail}`,
+    '',
+    'Pilha:',
+    (diag?.stack || (error instanceof Error ? error.stack : '') || '').split('\n').slice(0, 12).join('\n'),
+    '',
+    'Componentes:',
+    (diag?.componentStack || '').trim().split('\n').slice(0, 25).join('\n'),
+  ].join('\n')
+
+  async function copy() {
+    try {
+      await navigator.clipboard.writeText(report)
+      setCopied(true)
+    } catch { /* sem permissão de área de transferência: o texto continua visível para copiar à mão */ }
+  }
 
   function reload(clearCache: boolean) {
     if (clearCache) {
@@ -42,12 +65,14 @@ export function ErrorScreen() {
             Apagar cópia do aparelho e recarregar
           </button>
         </div>
-        {detail && (
-          <details className="mt-8 text-[13px] text-faint">
-            <summary className="cursor-pointer">Detalhes técnicos</summary>
-            <p className="mt-2 break-words font-mono">{detail}</p>
-          </details>
-        )}
+        <details className="mt-8 text-[13px] text-faint">
+          <summary className="cursor-pointer">Detalhes técnicos</summary>
+          <button onClick={copy} className="mt-3 inline-flex items-center gap-1.5 font-semibold text-brass hover:underline">
+            {copied ? <Check className="size-4" aria-hidden /> : <Copy className="size-4" aria-hidden />}
+            {copied ? 'Copiado' : 'Copiar detalhes'}
+          </button>
+          <pre className="mt-2 max-h-64 overflow-auto whitespace-pre-wrap break-words rounded-lg bg-raised p-3 font-mono text-[11px]">{report}</pre>
+        </details>
       </div>
     </main>
   )
