@@ -19,13 +19,18 @@ São três etapas: banco de dados (Supabase), hospedagem (Vercel) e instalação
 ### 1. Supabase (banco e login)
 
 1. Crie uma conta em [supabase.com](https://supabase.com) e um projeto novo (região **South America (São Paulo)**). Guarde a senha do banco.
-2. No projeto, abra **SQL Editor → New query**, cole todo o conteúdo de [`supabase/migrations/0001_schema.sql`](supabase/migrations/0001_schema.sql) e clique em **Run**. Repita com [`0002_import.sql`](supabase/migrations/0002_import.sql) e [`0003_description_rules.sql`](supabase/migrations/0003_description_rules.sql). Sempre que surgir um arquivo novo em `supabase/migrations`, rode só ele, em ordem.
+2. Crie as tabelas do app:
+   1. Aqui no GitHub, abra o arquivo [`supabase/setup.sql`](supabase/setup.sql) e clique no botão **Copy raw file** (ícone de copiar, no canto superior direito do arquivo).
+   2. No Supabase, abra **SQL Editor → New query**, cole **o conteúdo** copiado (são centenas de linhas começando com `-- Control — configuração completa do banco`) e clique em **Run**.
+   3. Deve aparecer **Success. No rows returned**.
+
+   > Cole o conteúdo do arquivo, não o nome dele: o SQL Editor não abre arquivos do repositório. Quando o app ganhar recursos novos, é só repetir esses passos — o script pode ser executado de novo sem duplicar nada.
 3. Em **Project Settings → API**, copie a **Project URL** e a chave **anon public**.
 4. Em **Authentication → URL Configuration**, preencha **Site URL** com o endereço do Vercel (ex.: `https://control-xyz.vercel.app`) depois do passo 2 abaixo. Sem isso, os links de confirmação e de redefinir senha apontam para o lugar errado.
 
 > A chave *anon* é pública por design. O que protege seus dados são as políticas de segurança por linha (RLS) criadas pelo SQL: cada usuário só lê e altera o que é dele.
 
-**Depois de criar sua conta no app**, desative novos cadastros em **Authentication → Sign In / Providers → Allow new users to sign up** (desligado). Assim ninguém mais consegue se cadastrar no seu app.
+**Depois que todas as pessoas que vão usar o app criarem a conta**, desative novos cadastros em **Authentication → Sign In / Providers → Allow new users to sign up** (desligado). Assim ninguém mais consegue se cadastrar. Cada conta vê só os próprios dados. Para incluir alguém depois, ligue a opção, a pessoa se cadastra, e você desliga de novo.
 
 ### 2. Vercel (hospedagem)
 
@@ -63,6 +68,7 @@ npm run demo
 | `npm run typecheck` | Checagem de tipos |
 | `npm test` | Regras de dinheiro, datas, faturas, parcelas, orçamento e metas |
 | `npm run build` | Tipos + build de produção (o mesmo que o Vercel roda) |
+| `npm run db:bundle` | Atualiza `supabase/setup.sql` depois de criar uma migração nova |
 | `npm run test:db` | Schema contra um Postgres local: RLS, saldos, faturas, recorrências (`PGHOST`, `PGPORT`, `PGUSER`) |
 | `npm run test:ui` | Com `npm run demo` rodando: lançamento parcelado, importação de extrato e checagem de layout no celular |
 
