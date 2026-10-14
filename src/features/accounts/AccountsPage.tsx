@@ -19,7 +19,7 @@ export function AccountsPage() {
   const [showArchived, setShowArchived] = useState(false)
 
   const all = accounts.data ?? []
-  const bal = (a: Account) => balances.data?.get(a.id) ?? a.initialBalance
+  const bal = (a: Account) => balances.data?.[a.id] ?? a.initialBalance
   const visible = all.filter((a) => showArchived || !a.archived)
   const regular = visible.filter((a) => a.type !== 'credit_card')
   const cards = visible.filter((a) => a.type === 'credit_card')

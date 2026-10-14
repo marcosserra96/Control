@@ -19,6 +19,7 @@ import { TransactionsPage } from '@/features/transactions/TransactionsPage'
 import { TxSheetProvider } from '@/features/transactions/TransactionSheet'
 import { isDemo } from '@/lib/supabase'
 import { AppLayout } from './AppLayout'
+import { ErrorScreen } from './ErrorScreen'
 import { LogoMark } from './Logo'
 import { MonthProvider } from './month'
 import { UpdatePrompt } from './UpdatePrompt'
@@ -60,9 +61,11 @@ const router = createBrowserRouter([
         </AuthProvider>
       </ToastProvider>
     ),
+    errorElement: <ErrorScreen />,
     children: [
       {
         element: <AppLayout />,
+        errorElement: <ErrorScreen />,
         children: [
           { index: true, element: <DashboardPage /> },
           { path: 'extrato', element: <TransactionsPage /> },

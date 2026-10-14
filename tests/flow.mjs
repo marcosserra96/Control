@@ -13,6 +13,11 @@ page.on('pageerror', (e) => errors.push(e.message))
 await page.goto(base + '/', { waitUntil: 'networkidle' })
 await page.screenshot({ path: `${out}/flow-1-home.png` })
 
+// Reabrir o app usa os dados guardados no aparelho: nada pode quebrar
+await page.waitForTimeout(2500) // o cache local é gravado a cada 2s
+await page.reload({ waitUntil: 'networkidle' })
+await expect(page.getByText('Saldo em contas')).toBeVisible()
+
 await page.getByRole('button', { name: 'Novo lançamento' }).last().click()
 const dialog = page.getByRole('dialog')
 await expect(dialog.getByText('Nova despesa')).toBeVisible()

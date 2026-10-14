@@ -17,7 +17,11 @@ export interface TxQuery {
  */
 export interface Repo {
   listAccounts(): Promise<Account[]>
-  listBalances(): Promise<Map<string, Cents>>
+  /**
+   * Saldo por id de conta. Objeto simples (não Map): os dados são guardados no
+   * aparelho em JSON entre aberturas do app, e Map não sobrevive a isso.
+   */
+  listBalances(): Promise<Record<string, Cents>>
   saveAccount(a: Upsert<Account>): Promise<Account>
   deleteAccount(id: string): Promise<void>
 

@@ -29,7 +29,7 @@ export function DashboardPage() {
   const loading = accounts.isPending || balances.isPending
 
   const active = (accounts.data ?? []).filter((a) => !a.archived)
-  const bal = (a: Account) => balances.data?.get(a.id) ?? a.initialBalance
+  const bal = (a: Account) => balances.data?.[a.id] ?? a.initialBalance
   const cash = active.filter((a) => a.type !== 'credit_card' && a.includeInTotal).reduce((s, a) => s + bal(a), 0)
   const cardDebt = active.filter((a) => a.type === 'credit_card').reduce((s, a) => s + Math.min(bal(a), 0), 0)
 

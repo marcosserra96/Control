@@ -10,3 +10,4 @@ dev-dist
 test-results
 playwright-report
 screenshots
+dist-demo

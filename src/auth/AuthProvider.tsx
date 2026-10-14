@@ -1,7 +1,7 @@
 import { createContext, use, useEffect, useMemo, useState, type ReactNode } from 'react'
 import type { Session } from '@supabase/supabase-js'
 import { useQueryClient } from '@tanstack/react-query'
-import { createMemoryRepo } from '@/data/memoryRepo'
+import { createMemoryRepo, emptySeed } from '@/data/memoryRepo'
 import { RepoContext } from '@/data/queries'
 import type { Repo } from '@/data/repo'
 import { createSupabaseRepo } from '@/data/supabaseRepo'
@@ -43,7 +43,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [userId, qc])
 
   const repo: Repo | null = useMemo(() => {
-    if (isDemo) return createMemoryRepo()
+    // ?vazio simula o primeiro acesso de uma conta nova (só no modo demonstração)
+    if (isDemo) return createMemoryRepo(new URLSearchParams(location.search).has('vazio') ? emptySeed() : undefined)
     return supabase && session ? createSupabaseRepo(supabase) : null
   }, [session])
 

@@ -58,7 +58,7 @@ function AccountView({ account }: { account: Account }) {
   const categories = useCategories()
   const lookup = useLookup(accounts.data, categories.data)
   const { openNew, openEdit } = useTxSheet()
-  const balance = balances.data?.get(account.id) ?? account.initialBalance
+  const balance = balances.data?.[account.id] ?? account.initialBalance
 
   const flow = useMemo(() => {
     let inflow = 0, outflow = 0

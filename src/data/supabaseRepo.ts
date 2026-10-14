@@ -96,7 +96,7 @@ export function createSupabaseRepo(db: SupabaseClient): Repo {
     },
     async listBalances() {
       const rows = check(await db.from('account_balances').select('account_id,balance'))
-      return new Map(rows.map((r: Row) => [r.account_id as string, toCents(r.balance)]))
+      return Object.fromEntries(rows.map((r: Row) => [r.account_id as string, toCents(r.balance)]))
     },
     async saveAccount(a) {
       const row = check(await db.from('accounts').upsert(accountRow(a)).select('*').single())

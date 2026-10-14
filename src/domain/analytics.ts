@@ -98,10 +98,10 @@ export function budgetProgress(budgets: Budget[], categories: Category[], monthT
 }
 
 /** Patrimônio: soma dos saldos das contas marcadas para entrar no total. */
-export function netWorth(accounts: Account[], balances: Map<string, Cents>): Cents {
+export function netWorth(accounts: Account[], balances: Record<string, Cents>): Cents {
   return accounts
     .filter((a) => !a.archived && a.includeInTotal)
-    .reduce((s, a) => s + (balances.get(a.id) ?? a.initialBalance), 0)
+    .reduce((s, a) => s + (balances[a.id] ?? a.initialBalance), 0)
 }
 
 export interface GoalProgress {

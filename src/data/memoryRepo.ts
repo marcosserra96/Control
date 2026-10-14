@@ -46,10 +46,10 @@ export function createMemoryRepo(seed = demoSeed()): Repo {
   return {
     listAccounts: () => delay([...db.accounts].sort((a, b) => a.sortOrder - b.sortOrder)),
     async listBalances() {
-      const m = new Map<string, Cents>(db.accounts.map((a) => [a.id, a.initialBalance]))
+      const m: Record<string, Cents> = Object.fromEntries(db.accounts.map((a) => [a.id, a.initialBalance]))
       for (const t of db.transactions) {
         if (!t.paid) continue
-        const add = (k: string, v: Cents) => m.set(k, (m.get(k) ?? 0) + v)
+        const add = (k: string, v: Cents) => { m[k] = (m[k] ?? 0) + v }
         if (t.type === 'income') add(t.accountId, t.amount)
         else add(t.accountId, -t.amount)
         if (t.type === 'transfer' && t.toAccountId) add(t.toAccountId, t.amount)
@@ -199,6 +199,12 @@ interface Seed {
   goals: Goal[]
   contributions: GoalContribution[]
   rules: DescriptionRule[]
+}
+
+/** Conta nova: só as categorias padrão, como o banco cria no cadastro. */
+export function emptySeed(): Seed {
+  const { categories } = demoSeed()
+  return { accounts: [], categories, transactions: [], recurrences: [], budgets: [], goals: [], contributions: [], rules: [] }
 }
 
 export function demoSeed(ref: ISODate = today()): Seed {
