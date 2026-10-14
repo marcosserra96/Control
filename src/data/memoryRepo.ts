@@ -34,6 +34,7 @@ export function createMemoryRepo(seed = demoSeed()): Repo {
           paid: isCard || date <= today(),
           invoiceMonth: isCard ? invoiceMonthFor(date, acc.closingDay!, acc.dueDay!) : null,
           installmentGroup: null, installmentNumber: null, installmentTotal: null, recurrenceId: r.id,
+          externalId: null, importId: null,
         })
         n++
       }
@@ -101,6 +102,11 @@ export function createMemoryRepo(seed = demoSeed()): Repo {
     async deleteTransaction(txId) {
       db.transactions = db.transactions.filter((t) => t.id !== txId)
       return delay(undefined)
+    },
+    async deleteImport(importId) {
+      const before = db.transactions.length
+      db.transactions = db.transactions.filter((t) => t.importId !== importId)
+      return delay(before - db.transactions.length)
     },
     async deleteInstallments(group, fromNumber) {
       db.transactions = db.transactions.filter((t) =>
@@ -177,7 +183,7 @@ export function demoSeed(ref: ISODate = today()): Seed {
   const id = (p: string) => `${p}-${++n}`
   const acc = (p: Partial<Account> & Pick<Account, 'name' | 'type'>): Account => ({
     id: id('acc'), color: '#E3AE4A', initialBalance: 0, creditLimit: null, closingDay: null, dueDay: null,
-    includeInTotal: true, archived: false, sortOrder: n, ...p,
+    includeInTotal: true, archived: false, sortOrder: n, importKey: null, ...p,
   })
   const nubank = acc({ name: 'Conta principal', type: 'checking', color: '#9B7BF0', initialBalance: 420000 })
   const reserva = acc({ name: 'Reserva', type: 'savings', color: '#5CCF9B', initialBalance: 1850000 })
@@ -213,7 +219,8 @@ export function demoSeed(ref: ISODate = today()): Seed {
       id: id('tx'), type: 'expense', notes: null, toAccountId: null, categoryId: null,
       paid: isCard || p.date <= ref,
       invoiceMonth: isCard && p.type !== 'transfer' ? invoiceMonthFor(p.date, a.closingDay!, a.dueDay!) : null,
-      installmentGroup: null, installmentNumber: null, installmentTotal: null, recurrenceId: null, ...p,
+      installmentGroup: null, installmentNumber: null, installmentTotal: null, recurrenceId: null,
+      externalId: null, importId: null, ...p,
     })
   }
 
@@ -267,6 +274,7 @@ export function demoSeed(ref: ISODate = today()): Seed {
       accountId: cartao.id, toAccountId: null, categoryId: c.compras.id, paid: true,
       invoiceMonth: addMonths(invoiceMonthFor(start, cartao.closingDay!, cartao.dueDay!), i),
       installmentGroup: group, installmentNumber: i + 1, installmentTotal: 10, recurrenceId: null,
+      externalId: null, importId: null,
     })
   }
 

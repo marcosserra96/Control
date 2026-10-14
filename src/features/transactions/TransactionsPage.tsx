@@ -1,5 +1,6 @@
 import { useDeferredValue, useMemo, useState } from 'react'
-import { ListOrdered, Search, SlidersHorizontal, X } from 'lucide-react'
+import { useNavigate } from 'react-router'
+import { FileUp, ListOrdered, Search, SlidersHorizontal, X } from 'lucide-react'
 import { PageHeader } from '@/app/AppLayout'
 import { MonthSwitcher, useMonth } from '@/app/month'
 import { Button } from '@/components/ui/Button'
@@ -35,6 +36,7 @@ export function TransactionsPage() {
   const categories = useCategories()
   const lookup = useLookup(accounts.data, categories.data)
   const { openNew, openEdit } = useTxSheet()
+  const navigate = useNavigate()
 
   const [query, setQuery] = useState('')
   const [type, setType] = useState<TypeFilter>('all')
@@ -77,7 +79,12 @@ export function TransactionsPage() {
 
   return (
     <>
-      <PageHeader title="Extrato" actions={<MonthSwitcher className="hidden md:flex" />}>
+      <PageHeader title="Extrato" actions={
+        <>
+          <MonthSwitcher className="hidden md:flex" />
+          <Button variant="secondary" size="sm" icon={<FileUp className="size-4" />} onClick={() => navigate('/importar')}>Importar</Button>
+        </>
+      }>
         <MonthSwitcher className="-ml-2 mt-1 md:hidden" />
       </PageHeader>
 
@@ -156,7 +163,12 @@ export function TransactionsPage() {
           </EmptyState>
         ) : (
           <EmptyState icon={<ListOrdered className="size-5" />} title={`Nada lançado em ${monthLabel(month)}`}
-            action={<Button onClick={() => openNew()}>Novo lançamento</Button>}>
+            action={
+              <div className="flex flex-wrap justify-center gap-2">
+                <Button onClick={() => openNew()}>Novo lançamento</Button>
+                <Button variant="secondary" onClick={() => navigate('/importar')}>Importar extrato</Button>
+              </div>
+            }>
             Tudo o que entra e sai aparece aqui, agrupado por dia.
           </EmptyState>
         )

@@ -9,6 +9,7 @@ import type { Account, Transaction } from './types'
 const card: Account = {
   id: 'card', name: 'Cartão', type: 'credit_card', color: '#fff', initialBalance: 0,
   creditLimit: 500000, closingDay: 25, dueDay: 5, includeInTotal: true, archived: false, sortOrder: 0,
+  importKey: null,
 }
 const checking: Account = { ...card, id: 'cc', type: 'checking', closingDay: null, dueDay: null, creditLimit: null }
 
@@ -16,7 +17,8 @@ function tx(p: Partial<Transaction>): Transaction {
   return {
     id: Math.random().toString(36), type: 'expense', amount: 1000, date: '2026-10-10', description: 'x',
     notes: null, accountId: 'cc', toAccountId: null, categoryId: null, paid: true, invoiceMonth: null,
-    installmentGroup: null, installmentNumber: null, installmentTotal: null, recurrenceId: null, ...p,
+    installmentGroup: null, installmentNumber: null, installmentTotal: null, recurrenceId: null,
+    externalId: null, importId: null, ...p,
   }
 }
 

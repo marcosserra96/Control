@@ -1,9 +1,10 @@
 import { Link } from 'react-router'
-import { BarChart3, ChevronRight, Settings, Tags, WalletCards, type LucideIcon } from 'lucide-react'
+import { BarChart3, ChevronRight, FileUp, Settings, Tags, WalletCards, type LucideIcon } from 'lucide-react'
 import { PageHeader } from '@/app/AppLayout'
 
 const items: { to: string; label: string; description: string; icon: LucideIcon }[] = [
   { to: '/contas', label: 'Contas e cartões', description: 'Saldos, faturas e limites', icon: WalletCards },
+  { to: '/importar', label: 'Importar extrato', description: 'Traga os gastos do banco em OFX ou CSV', icon: FileUp },
   { to: '/relatorios', label: 'Relatórios', description: 'Evolução mensal e categorias', icon: BarChart3 },
   { to: '/categorias', label: 'Categorias', description: 'Nomes, cores e ícones', icon: Tags },
   { to: '/ajustes', label: 'Ajustes', description: 'Tema, instalar app, exportar, sair', icon: Settings },

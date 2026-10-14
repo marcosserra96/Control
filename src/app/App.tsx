@@ -6,6 +6,7 @@ import { ToastProvider } from '@/components/ui/Toast'
 import { AccountDetailPage } from '@/features/accounts/AccountDetailPage'
 import { AccountsPage } from '@/features/accounts/AccountsPage'
 import { DashboardPage, RowsSkeleton } from '@/features/dashboard/DashboardPage'
+import { ImportPage } from '@/features/import/ImportPage'
 import { BudgetsTab } from '@/features/plan/BudgetsTab'
 import { GoalsTab } from '@/features/plan/GoalsTab'
 import { PlanPage } from '@/features/plan/PlanPage'
@@ -64,6 +65,7 @@ const router = createBrowserRouter([
         children: [
           { index: true, element: <DashboardPage /> },
           { path: 'extrato', element: <TransactionsPage /> },
+          { path: 'importar', element: <ImportPage /> },
           { path: 'contas', element: <AccountsPage /> },
           { path: 'contas/:id', element: <AccountDetailPage /> },
           {

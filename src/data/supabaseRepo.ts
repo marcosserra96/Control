@@ -31,13 +31,14 @@ const account = (r: Row): Account => ({
   creditLimit: r.credit_limit === null ? null : toCents(r.credit_limit),
   closingDay: r.closing_day, dueDay: r.due_day,
   includeInTotal: r.include_in_total, archived: r.archived, sortOrder: r.sort_order,
+  importKey: r.import_key ?? null,
 })
 const accountRow = (a: Partial<Account>): Row => strip({
   id: a.id, name: a.name, type: a.type, color: a.color,
   initial_balance: a.initialBalance === undefined ? undefined : fromCents(a.initialBalance),
   credit_limit: a.creditLimit === undefined ? undefined : a.creditLimit === null ? null : fromCents(a.creditLimit),
   closing_day: a.closingDay, due_day: a.dueDay, include_in_total: a.includeInTotal,
-  archived: a.archived, sort_order: a.sortOrder,
+  archived: a.archived, sort_order: a.sortOrder, import_key: a.importKey,
 })
 
 const category = (r: Row): Category => ({
@@ -49,7 +50,7 @@ const transaction = (r: Row): Transaction => ({
   notes: r.notes, accountId: r.account_id, toAccountId: r.to_account_id, categoryId: r.category_id,
   paid: r.paid, invoiceMonth: r.invoice_month, installmentGroup: r.installment_group,
   installmentNumber: r.installment_number, installmentTotal: r.installment_total,
-  recurrenceId: r.recurrence_id,
+  recurrenceId: r.recurrence_id, externalId: r.external_id ?? null, importId: r.import_id ?? null,
 })
 const transactionRow = (t: Partial<NewTransaction>): Row => strip({
   type: t.type, amount: t.amount === undefined ? undefined : fromCents(t.amount), date: t.date,
@@ -57,6 +58,7 @@ const transactionRow = (t: Partial<NewTransaction>): Row => strip({
   category_id: t.categoryId, paid: t.paid, invoice_month: t.invoiceMonth,
   installment_group: t.installmentGroup, installment_number: t.installmentNumber,
   installment_total: t.installmentTotal, recurrence_id: t.recurrenceId,
+  external_id: t.externalId, import_id: t.importId,
 })
 
 const recurrence = (r: Row): Recurrence => ({
@@ -76,7 +78,7 @@ function strip(o: Row): Row {
 
 const TX_COLUMNS =
   'id,type,amount,date,description,notes,account_id,to_account_id,category_id,paid,invoice_month,' +
-  'installment_group,installment_number,installment_total,recurrence_id'
+  'installment_group,installment_number,installment_total,recurrence_id,external_id,import_id'
 
 // --- repositório -------------------------------------------------------------
 
@@ -153,6 +155,10 @@ export function createSupabaseRepo(db: SupabaseClient): Repo {
     },
     async deleteTransaction(id) {
       check(await db.from('transactions').delete().eq('id', id))
+    },
+    async deleteImport(importId) {
+      const rows = check(await db.from('transactions').delete().eq('import_id', importId).select('id'))
+      return rows.length
     },
     async deleteInstallments(group, fromNumber) {
       check(await db.from('transactions').delete()

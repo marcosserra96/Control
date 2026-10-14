@@ -1,7 +1,7 @@
 {
   "name": "control",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.2.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -11,7 +11,7 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:db": "bash supabase/tests/run.sh",
-    "test:ui": "node tests/flow.mjs && node tests/overflow.mjs",
+    "test:ui": "node tests/flow.mjs && node tests/import.mjs && node tests/overflow.mjs",
     "icons": "node scripts/icons.mjs"
   },
   "dependencies": {

@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router'
-import { ArrowLeft, ChevronLeft, ChevronRight, Pencil, Plus } from 'lucide-react'
+import { ArrowLeft, ChevronLeft, ChevronRight, FileUp, Pencil, Plus } from 'lucide-react'
 import { PageHeader } from '@/app/AppLayout'
 import { MonthSwitcher, useMonth } from '@/app/month'
 import { Button, IconButton } from '@/components/ui/Button'
@@ -50,6 +50,7 @@ export function AccountDetailPage() {
 }
 
 function AccountView({ account }: { account: Account }) {
+  const navigate = useNavigate()
   const { month } = useMonth()
   const balances = useBalances()
   const txs = useTransactions({ from: month, to: endOfMonth(month), accountId: account.id })
@@ -81,7 +82,10 @@ function AccountView({ account }: { account: Account }) {
             <div><dt className="text-muted first-letter:uppercase">Saídas em {monthLabel(month)}</dt><dd><Amount value={flow.outflow} className="font-semibold text-loss" /></dd></div>
           </dl>
         </Panel>
-        <Button variant="secondary" icon={<Plus className="size-4" />} onClick={() => openNew({ accountId: account.id })}>Lançar nesta conta</Button>
+        <div className="grid grid-cols-2 gap-2">
+          <Button variant="secondary" icon={<Plus className="size-4" />} onClick={() => openNew({ accountId: account.id })}>Lançar</Button>
+          <Button variant="secondary" icon={<FileUp className="size-4" />} onClick={() => navigate(`/importar?conta=${account.id}`)}>Importar</Button>
+        </div>
       </div>
       <div>
         <div className="mb-3 flex items-center justify-between">
@@ -110,6 +114,7 @@ const STATUS: Record<InvoiceStatus, { label: string; tone: 'neutral' | 'gain' | 
 }
 
 function CardView({ card }: { card: Account }) {
+  const navigate = useNavigate()
   const current = invoiceMonthFor(today(), card.closingDay!, card.dueDay!)
   const [selected, setSelected] = useState(current)
   // Carrega uma janela ao redor da fatura escolhida (parcelas futuras incluídas)
@@ -169,7 +174,10 @@ function CardView({ card }: { card: Account }) {
             Já há <Amount value={futureCommitted} className="font-semibold text-ink" /> lançados nas próximas faturas (parcelas e recorrentes).
           </p>
         )}
-        <Button variant="secondary" icon={<Plus className="size-4" />} onClick={() => openNew({ accountId: card.id })}>Nova compra no cartão</Button>
+        <div className="grid grid-cols-2 gap-2">
+          <Button variant="secondary" icon={<Plus className="size-4" />} onClick={() => openNew({ accountId: card.id })}>Nova compra</Button>
+          <Button variant="secondary" icon={<FileUp className="size-4" />} onClick={() => navigate(`/importar?conta=${card.id}`)}>Importar fatura</Button>
+        </div>
       </div>
 
       <div>

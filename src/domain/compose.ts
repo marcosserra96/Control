@@ -42,6 +42,8 @@ export function composeTransactions(
     toAccountId: draft.type === 'transfer' ? draft.toAccountId : null,
     categoryId: draft.type === 'transfer' ? null : draft.categoryId,
     recurrenceId: null,
+    externalId: null,
+    importId: null,
   }
 
   const n = draft.type === 'transfer' ? 1 : Math.max(1, Math.floor(draft.installments))

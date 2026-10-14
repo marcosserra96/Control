@@ -33,6 +33,8 @@ export interface Repo {
   deleteTransaction(id: string): Promise<void>
   /** Remove a parcela informada e as seguintes do mesmo parcelamento */
   deleteInstallments(group: string, fromNumber: number): Promise<void>
+  /** Desfaz uma importação: apaga os lançamentos criados por ela */
+  deleteImport(importId: string): Promise<number>
 
   listRecurrences(): Promise<Recurrence[]>
   saveRecurrence(r: Upsert<Recurrence>): Promise<Recurrence>

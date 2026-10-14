@@ -40,6 +40,7 @@ export function AccountForm({
     closingDay: isCard ? closingDay : null,
     dueDay: isCard ? dueDay : null,
     includeInTotal, archived, sortOrder: account?.sortOrder ?? Date.now() % 100000,
+    importKey: account?.importKey ?? null,
   }), ['accounts'])
 
   const remove = useRepoMutation((repo) => repo.deleteAccount(account!.id), ['accounts', 'transactions', 'recurrences'])

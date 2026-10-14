@@ -24,6 +24,8 @@ export interface Account {
   includeInTotal: boolean
   archived: boolean
   sortOrder: number
+  /** Banco + conta do arquivo importado, para reconhecer a conta na próxima importação */
+  importKey: string | null
 }
 
 export interface Category {
@@ -51,6 +53,10 @@ export interface Transaction {
   installmentNumber: number | null
   installmentTotal: number | null
   recurrenceId: string | null
+  /** Identificador no banco (importação), evita duplicar */
+  externalId: string | null
+  /** Lote de importação, para desfazer */
+  importId: string | null
 }
 
 export type NewTransaction = Omit<Transaction, 'id'>

@@ -61,6 +61,18 @@ do $$ begin
     and date = '2026-10-31'), 'outubro volta ao dia 31';
 end $$;
 
+-- Importação: o mesmo ID do banco não entra duas vezes na mesma conta
+insert into transactions (type, amount, date, description, account_id, external_id) values
+  ('expense', 10, '2026-10-01', 'Importado', 'aaaaaaaa-0000-0000-0000-000000000001', 'f:ABC');
+do $$ begin
+  begin
+    insert into transactions (type, amount, date, description, account_id, external_id) values
+      ('expense', 10, '2026-10-01', 'Importado', 'aaaaaaaa-0000-0000-0000-000000000001', 'f:ABC');
+    raise exception 'deveria ter falhado';
+  exception when unique_violation then null;
+  end;
+end $$;
+
 -- Isolamento: o usuário 2 não vê nem usa dados do usuário 1
 select set_config('request.jwt.claim.sub', '22222222-2222-2222-2222-222222222222', false);
 do $$ begin

@@ -8,6 +8,7 @@ Controle financeiro pessoal que funciona no celular e no computador, instalável
 - **Orçamento** — limite mensal por categoria, com aviso de ritmo de gasto.
 - **Metas** — objetivos de economia, aportes e quanto guardar por mês.
 - **Relatórios** — entradas e saídas por mês e gastos por categoria.
+- **Importar extrato** — traga os gastos do banco em OFX ou CSV (Nubank, Inter, Bradesco, Santander, Caixa e outros), com categoria sugerida e sem duplicar o que já foi lançado.
 - **Exportação** — todos os lançamentos em CSV.
 
 ## Como colocar no ar
@@ -17,7 +18,7 @@ São três etapas: banco de dados (Supabase), hospedagem (Vercel) e instalação
 ### 1. Supabase (banco e login)
 
 1. Crie uma conta em [supabase.com](https://supabase.com) e um projeto novo (região **South America (São Paulo)**). Guarde a senha do banco.
-2. No projeto, abra **SQL Editor → New query**, cole todo o conteúdo de [`supabase/migrations/0001_schema.sql`](supabase/migrations/0001_schema.sql) e clique em **Run**.
+2. No projeto, abra **SQL Editor → New query**, cole todo o conteúdo de [`supabase/migrations/0001_schema.sql`](supabase/migrations/0001_schema.sql) e clique em **Run**. Repita com [`0002_import.sql`](supabase/migrations/0002_import.sql). Sempre que surgir um arquivo novo em `supabase/migrations`, rode só ele, em ordem.
 3. Em **Project Settings → API**, copie a **Project URL** e a chave **anon public**.
 4. Em **Authentication → URL Configuration**, preencha **Site URL** com o endereço do Vercel (ex.: `https://control-xyz.vercel.app`) depois do passo 2 abaixo. Sem isso, os links de confirmação e de redefinir senha apontam para o lugar errado.
 
@@ -62,7 +63,7 @@ npm run demo
 | `npm test` | Regras de dinheiro, datas, faturas, parcelas, orçamento e metas |
 | `npm run build` | Tipos + build de produção (o mesmo que o Vercel roda) |
 | `npm run test:db` | Schema contra um Postgres local: RLS, saldos, faturas, recorrências (`PGHOST`, `PGPORT`, `PGUSER`) |
-| `npm run test:ui` | Com `npm run demo` rodando: fluxo de lançamento parcelado e checagem de layout no celular |
+| `npm run test:ui` | Com `npm run demo` rodando: lançamento parcelado, importação de extrato e checagem de layout no celular |
 
 ## Arquitetura
 
@@ -83,11 +84,13 @@ Decisões que vale conhecer:
 - **Fatura do cartão = mês de vencimento.** Compras a partir do dia de fechamento vão para a fatura seguinte. A regra existe em `src/domain/invoice.ts` e em `invoice_month_for()` no SQL — mantenha as duas iguais (há testes para as duas).
 - **Pagar fatura = transferência** da conta para o cartão, vinculada ao mês da fatura. O saldo do cartão negativo é o valor devido.
 - **Recorrências são geradas no banco** (`generate_recurring`), de forma idempotente, até o fim do mês corrente; as futuras nascem como pendentes. Celular e computador abrindo juntos não duplicam lançamentos.
+- **Importação** acontece no aparelho: o arquivo do banco não é enviado a lugar nenhum; só os lançamentos confirmados vão para o banco de dados. Cada lançamento importado guarda o identificador do banco (`external_id`), então importar o mesmo arquivo de novo não duplica. Lançamentos feitos à mão com mesmo valor e data próxima (até 4 dias) são reconhecidos e só vinculados. O pagamento recebido na fatura do cartão é ignorado, porque o dinheiro já sai pela conta que pagou. As regras estão em `src/domain/import/` e cobertas por testes com arquivos de exemplo.
 - **Offline:** o app abre e mostra os últimos dados salvos no aparelho; lançar exige conexão. O cache local é apagado ao sair da conta. Dados financeiros nunca vão para o cache do service worker.
 
 ## Próximos passos possíveis
 
-- Importar extrato bancário (OFX/CSV)
+- Sincronização automática via Open Finance (exige contratar um agregador)
+- Atalho do iPhone para registrar compras do Apple Pay na hora
 - Lançar offline com sincronização posterior
 - Histórico de patrimônio (saldo total mês a mês)
 - Pendentes atrasados de meses anteriores no Início

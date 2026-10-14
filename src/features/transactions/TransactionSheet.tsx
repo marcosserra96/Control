@@ -117,8 +117,9 @@ function TransactionForm({
         account, () => '', accounts.find((a) => a.id === toAccountId),
       )
       // Mantém vínculos de parcelamento/recorrência ao editar uma ocorrência
-      const { installmentGroup, installmentNumber, installmentTotal, recurrenceId, ...patch } = row!
-      void installmentGroup; void installmentNumber; void installmentTotal; void recurrenceId
+      // (e o vínculo com o banco, senão a próxima importação duplicaria o lançamento)
+      const { installmentGroup, installmentNumber, installmentTotal, recurrenceId, externalId, importId, ...patch } = row!
+      void installmentGroup; void installmentNumber; void installmentTotal; void recurrenceId; void externalId; void importId
       // Parcelas mantêm a fatura original, para não desalinhar a sequência
       if (editing.installmentGroup && editing.accountId === accountId) patch.invoiceMonth = editing.invoiceMonth
       await repo.updateTransaction(editing.id, patch)
